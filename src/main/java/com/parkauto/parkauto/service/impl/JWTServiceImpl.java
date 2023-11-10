@@ -1,0 +1,59 @@
+package com.parkauto.parkauto.service.impl;
+
+import com.parkauto.parkauto.service.JWTService;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+
+import java.security.Key;
+import java.util.Date;
+import java.util.Map;
+import java.util.function.Function;
+
+@Service
+public class JWTServiceImpl implements JWTService {
+    public String generateToken(UserDetails userDetails){
+        return Jwts.builder().setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis()+1000*60*24))
+                .signWith(getSiginKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+    private <T> T extractClaim(String token, Function<Claims, T> claimsResolvers){
+        final Claims claims = extractAllClaims(token);
+        return claimsResolvers.apply(claims);
+    }
+
+    private Claims extractAllClaims(String token){
+        return Jwts.parserBuilder().setSigningKey(getSiginKey())
+                .build().parseClaimsJws(token).getBody();
+    }
+
+    public String extractUserName(String token){
+        return extractClaim(token, Claims::getSubject);
+    }
+    private Key getSiginKey(){
+        byte[] key= Decoders.BASE64.decode("XRv2o5RQmt4hOGqec4W8VHe20XEF5d0E63x2b6qa6P5avXrf4y4dJGSPRUbVth");
+        return Keys.hmacShaKeyFor(key);
+    }
+ public boolean isTokenValid(String token,UserDetails userDetails ){
+        final String username=extractUserName(token);
+        return (username.equals(userDetails.getUsername())&& !isTokenExpired(token));
+ }
+
+    private boolean isTokenExpired(String token) {
+        return extractClaim(token , Claims::getExpiration)
+                .before(new Date());
+    }
+    public String generateRefreshToken(Map<String, Object> extraClaims,UserDetails userDetails){
+        return Jwts.builder().setClaims(extraClaims).setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis()+604800000))
+                .signWith(getSiginKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+}
