@@ -8,8 +8,12 @@ import com.parkauto.parkauto.entity.Role;
 import com.parkauto.parkauto.entity.User;
 import com.parkauto.parkauto.repository.IUserRepository;
 import com.parkauto.parkauto.service.AuthenticationService;
+import com.parkauto.parkauto.service.EmailService;
 import com.parkauto.parkauto.service.JWTService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +28,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JWTService jwtService;
+    private Logger LOGGER = LoggerFactory.getLogger(getClass());
+
+    @Autowired
+    private EmailService emailService;
+
+
     public User signup(SignUpRequest signUpRequest){
 User user = new User();
 user.setEmail(signUpRequest.getEmail());
@@ -31,6 +41,8 @@ user.setFirstname(signUpRequest.getFirstName());
 user.setLastname(signUpRequest.getLastName());
 user.setRole(Role.USER); // user ne peut pas etre admin
         user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
+        LOGGER.info("Votre Mot de passe utilisateur"+signUpRequest.getPassword());
+        emailService.sendConfirmRegister(signUpRequest.getEmail(),signUpRequest.getFirstName(),signUpRequest.getPassword());
     return userRepository.save(user);
     }
 
